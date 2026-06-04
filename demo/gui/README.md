@@ -33,10 +33,10 @@ the UI shows a clear error instead of crashing.
 
 ## What you'll see
 
-- **Left (❌ Without Bulkhead):** instruction + content concatenated into one user
+- **Left (Without Bulkhead):** instruction + content concatenated into one user
   message. With an attack sample, the injection often lands — watch for the
   `injection risk` badge.
-- **Right (🛡️ With Bulkhead):** JSON input with `trusted_instruction` and
+- **Right (With Bulkhead):** JSON input with `trusted_instruction` and
   `untrusted_inputs`, plus a guard in `system`. Expand **"view messages sent"**
   to see the structure.
 - **Smoke Test:** select one or more relevant chat models and run every sample.

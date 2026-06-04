@@ -11,7 +11,7 @@ Structural context separation for LLM agents: one import, zero core dependencies
 Most LLM apps build their prompt like this:
 
 ```ts
-prompt: `${userPrompt} ${webContent} ${toolOutput}`   // 🥣 the soup
+prompt: `${userPrompt} ${webContent} ${toolOutput}`   // the soup
 ```
 
 Everything — your instructions and untrusted external text — lands in one

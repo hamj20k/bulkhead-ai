@@ -1,6 +1,6 @@
 # Bulkhead demos
 
-## `live_groq.py` — real model, real injection ⭐
+## `live_groq.py` — real model, real injection
 
 Runs the same request against a real model twice (unprotected vs. sealed) using
 a poisoned "financial report" that hides an indirect prompt injection.

@@ -1,6 +1,6 @@
 # Bulkhead ASR benchmark results
 
-> ⚠️ **STALE — regenerate.** These numbers predate the corrected success metric
+> **STALE — regenerate.** These numbers predate the corrected success metric
 > (refusal-aware), the `sealed_strict` row, and the per-style breakdown. Re-run
 > `python benchmark/asr.py --trials 3 --log-responses` to refresh. The old metric
 > counted "marker present" as a success even when the model *refused while quoting

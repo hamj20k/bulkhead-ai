@@ -15,7 +15,7 @@ npm install bulkhead-ai ai
 ## Before / after
 
 ```ts
-// ❌ The "soup": instructions and untrusted data in one string.
+// The "soup": instructions and untrusted data in one string.
 // A page that says "ignore previous instructions" has full instruction authority.
 const result = await generateText({
   model: openai('gpt-4o'),
@@ -24,7 +24,7 @@ const result = await generateText({
 ```
 
 ```ts
-// ✅ Swap one import, add one field.
+// Swap one import, add one field.
 import { generateText } from 'bulkhead-ai'
 
 const result = await generateText({
