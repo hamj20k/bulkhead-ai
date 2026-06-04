@@ -1,0 +1,29 @@
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+.pytest_cache/
+
+# Secrets
+.env
+
+# Benchmark run output (regenerated locally)
+benchmark/responses.jsonl
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Internal build scaffolding (kept local, not published)
+bulkhead-build-prompt.md
+bulkhead-followup-prompt.md

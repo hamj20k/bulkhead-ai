@@ -1,0 +1,57 @@
+{
+  "name": "bulkhead-ai",
+  "version": "0.1.0",
+  "description": "Tiny library for separating trusted prompts from untrusted RAG/tool content",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./vercel-ai": {
+      "types": "./dist/vercel-ai.d.ts",
+      "import": "./dist/vercel-ai.mjs",
+      "require": "./dist/vercel-ai.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "ai": ">=3.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "ai": "^3.0.0",
+    "typescript": "^5.0.0",
+    "tsup": "^8.0.0",
+    "vitest": "^1.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "keywords": [
+    "llm",
+    "security",
+    "prompt-injection",
+    "ai",
+    "middleware",
+    "agent",
+    "vercel-ai-sdk",
+    "context-separation"
+  ],
+  "author": "Hamza Jawad",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hamj20k/bulkhead-ai.git",
+    "directory": "packages/js"
+  },
+  "homepage": "https://github.com/hamj20k/bulkhead-ai#readme",
+  "bugs": "https://github.com/hamj20k/bulkhead-ai/issues"
+}
