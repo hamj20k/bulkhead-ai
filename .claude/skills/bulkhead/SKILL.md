@@ -1,3 +1,8 @@
+---
+name: bulkhead
+description: Audit a codebase for prompt-injection and LLM context-separation violations. Use when writing or reviewing code that builds prompts or calls an LLM (generateText, streamText, openai.chat.completions, anthropic.messages, ChatOpenAI, LangChain chains, llm.predict, completion(), etc.) to ensure untrusted external content (web/HTTP responses, RAG/vector results, tool outputs, files read at runtime, DB rows with user data) is structurally separated from trusted instructions. Flags HIGH/MEDIUM/LOW violations and emits exact fixes using the bulkhead-ai package.
+---
+
 # Bulkhead Security Skill
 
 ## What You Are

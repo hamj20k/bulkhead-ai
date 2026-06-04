@@ -110,7 +110,7 @@ param and the JSON payload is the user turn.)
 - **Sessions** — accumulate a per-turn risk history for observability; gating is
   per-turn and independent (track-only, no hidden state).
 - **Two layers** — the runtime packages (npm + pip) enforce at *run time*; the
-  language-agnostic Claude Code skill ([`skill/bulkhead.md`](skill/bulkhead.md))
+  language-agnostic Claude Code skill ([`.claude/skills/bulkhead/SKILL.md`](.claude/skills/bulkhead/SKILL.md))
   audits call sites at *write time*. Different layers; both useful.
 
 Constraints held throughout: zero LLM/network calls in the core, zero runtime

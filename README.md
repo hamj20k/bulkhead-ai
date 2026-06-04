@@ -169,10 +169,19 @@ want to see the kind of output without running anything.
 
 | Layer | What | When |
 |-------|------|------|
-| **Skill** ([`skill/bulkhead.md`](skill/bulkhead.md)) | Language-agnostic Claude Code auditor | **Write time** — static analysis; flags HIGH/MEDIUM/LOW separation violations before they ship |
+| **Skill** ([`.claude/skills/bulkhead/SKILL.md`](.claude/skills/bulkhead/SKILL.md)) | Language-agnostic Claude Code auditor | **Write time** — static analysis; flags HIGH/MEDIUM/LOW separation violations before they ship |
 | **Runtime packages** | npm + pip middleware | **Run time** — seals untrusted content on every call |
 
-Copy the skill into your project's `.claude/commands/` and ask Claude to audit your model call sites.
+Install the skill into any project — it's a standard Claude Code skill, so it
+loads automatically and triggers when you touch model-call code:
+
+```bash
+mkdir -p .claude/skills/bulkhead
+curl -sL https://raw.githubusercontent.com/hamj20k/bulkhead-ai/main/.claude/skills/bulkhead/SKILL.md \
+  -o .claude/skills/bulkhead/SKILL.md
+```
+
+Then just ask Claude to audit your model call sites (or run `/bulkhead`).
 
 ---
 

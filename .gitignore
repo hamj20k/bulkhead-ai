@@ -27,3 +27,6 @@ benchmark/responses.jsonl
 # Internal build scaffolding (kept local, not published)
 bulkhead-build-prompt.md
 bulkhead-followup-prompt.md
+
+# Claude Code local/personal settings (the shipped skill lives in .claude/skills/)
+.claude/settings.local.json
