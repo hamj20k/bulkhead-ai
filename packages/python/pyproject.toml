@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bulkhead-ai"
-version = "0.1.0"
+version = "0.1.1"
 description = "Tiny library for separating trusted prompts from untrusted RAG/tool content"
 readme = "README.md"
 license = { text = "MIT" }
