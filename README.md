@@ -4,6 +4,8 @@
 
 Structural context separation for LLM agents: one import, zero core dependencies.
 
+> New here? Start with **[HOW_TO_BULKHEAD.md](HOW_TO_BULKHEAD.md)** — the dead-simple guide.
+
 [![JS tests](https://github.com/hamj20k/bulkhead-ai/actions/workflows/js.yml/badge.svg)](https://github.com/hamj20k/bulkhead-ai/actions/workflows/js.yml)
 [![Python tests](https://github.com/hamj20k/bulkhead-ai/actions/workflows/python.yml/badge.svg)](https://github.com/hamj20k/bulkhead-ai/actions/workflows/python.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -159,6 +161,11 @@ The **Smoke Test** tab runs every sample across the models you select and scores
 whether each attack leaked. Full provider/model list and a panel-by-panel
 walkthrough are in [`demo/gui/README.md`](demo/gui/README.md).
 
+The protected side uses the current **Setup & Test** scorer config. With no
+config, Bulkhead falls back to the lightest default: the local regex scorer
+(model-free, zero setup). Set up a gate or judge model on `/setup` for heavier
+duty detection, then run the side-by-side demo or Smoke Test with those settings.
+
 A captured smoke-test run across several models is checked in as
 [`Bulkhead - model smoke test.pdf`](Bulkhead%20-%20model%20smoke%20test.pdf) if you
 want to see the kind of output without running anything.
@@ -198,14 +205,83 @@ Then just ask Claude to audit your model call sites (or run `/bulkhead`).
 - The built-in scorer is a **regex/heuristic pre-filter**, not a detector. It misses obfuscated, translated, encoded, or novel attacks, and will have false positives. Treat the score as a signal, not a verdict.
 - It is not a jailbreak filter, a content moderator, or a replacement for least-privilege tool design (e.g. don't give an agent a `send_email` tool it can invoke from untrusted text).
 
-**Use a stronger scorer when it matters.** The scorer is pluggable — drop in an LLM judge or a hosted detector:
+**Use a stronger scorer when it matters.** The scorer is a pluggable, tiered
+system: the zero-dep regex pass is the default, with an optional per-chunk gate
+and an optional cross-chunk judge on top. See [Scorer tiers](#scorer-tiers) for
+`bulkhead setup`, local/cloud judges, `judge_when`, the failure mode, and the
+async note.
 
-```ts
-new Bulkhead({ policy: 'strict' }, async (content) => myDetector(content))
+---
+
+## Scorer tiers
+
+The scorer is tiered. The regex pass is the default and runs with **no setup**;
+you opt into stronger tiers when you need them.
+
+| Tier | What | Cost |
+|------|------|------|
+| **regex** (default) | local heuristics: injection/jailbreak/extraction patterns, hidden unicode, bidi-control (Trojan Source), unicode tag chars, JSON field-spoofing, action-verb density, long encoded blobs | free, always on |
+| **gate** | a small per-chunk classifier (e.g. a local ONNX prompt-injection model) | cheap |
+| **judge** | a model that sees **all** retrieved chunks together, to catch payloads split across them | heavier, runs only when needed |
+
+`judge_when` controls escalation (default `suspicious_or_many`):
+
+| value | the judge runs… |
+|-------|-----------------|
+| `never` | gate only |
+| `gate_flagged` | only if a chunk tripped the gate (misses pure cross-chunk splits) |
+| `suspicious_or_many` | on any gate flag, on many chunks, or when a cheap combined-text pre-pass trips (**default**) |
+| `always` | every call (max coverage, max cost) |
+
+### Configure it once: `bulkhead setup` (Python)
+
+```bash
+pip install "bulkhead-ai[onnx,ollama]"
+bulkhead setup --recommended      # local ONNX gate + Ollama cross-chunk judge
 ```
 ```python
-Bulkhead(BulkheadConfig(policy="strict"), scorer=my_detector)
+from bulkhead import Bulkhead
+bh = Bulkhead.from_config()        # opt-in; plain seal() still uses the regex default
 ```
+
+`bulkhead setup` (interactive, or `--recommended`) writes a config file. Pick any
+runtime per slot (`onnx` / `ollama` / `llama_cpp` / `cloud`); the gate and judge
+can differ. `bulkhead status` shows what's configured, `bulkhead setup --reset`
+reverts to the regex default. Weights download on first use, never bundled.
+
+Or wire a judge directly, no config file:
+
+```python
+from bulkhead import Bulkhead, BulkheadConfig
+from bulkhead.scorers.ollama import ollama_judge_factory
+judge = ollama_judge_factory({"model": "llama3.2:3b"}, BulkheadConfig())
+bh = Bulkhead(BulkheadConfig(policy="strict"), judge=judge)
+```
+```ts
+import { Bulkhead, ollamaJudge } from 'bulkhead-ai'
+const bh = new Bulkhead({ policy: 'strict' }, undefined, ollamaJudge({ model: 'llama3.2:3b' }))
+```
+
+### Async servers (FastAPI / asyncio): use `aseal()`
+
+If you run inside an asyncio server **and** add a cloud or Ollama judge, call
+`aseal()` instead of `seal()`. It is the async-native twin: it awaits judge calls
+so it never blocks the event loop. `seal()` is unchanged for synchronous code.
+(JS `seal()` is already async, so there is no separate JS function.)
+
+```python
+sealed = await bh.aseal(user=prompt, retrieved=chunks)
+```
+
+### When the judge fails, and privacy
+
+- **Failure mode (`judge_on_error`):** if the judge times out or is unreachable,
+  Bulkhead either `fail_open` (skip the judge) or `fail_closed` (treat as high
+  risk). The default follows policy (`strict` → fail_closed, `warn`/`permissive`
+  → fail_open) and is **never silent** — a judge error always logs a warning.
+- **Privacy:** a **cloud** judge sends the suspicious retrieved content to that
+  provider. Local runtimes (ONNX, Ollama, llama-cpp) keep everything on your
+  machine. `bulkhead setup` states this before you pick a cloud provider.
 
 ---
 
@@ -235,8 +311,10 @@ Both packages have full test suites (`npm run test:run` / `pytest`). PRs welcome
 a stronger default scorer, more SDK wrappers, additional model smoke tests, and
 clearer docs are great first contributions.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), [ROADMAP.md](ROADMAP.md),
-[SECURITY.md](SECURITY.md), and [CHANGELOG.md](CHANGELOG.md).
+See [HOW_TO_BULKHEAD.md](HOW_TO_BULKHEAD.md) (start here),
+[CONTRIBUTING.md](CONTRIBUTING.md), [ROADMAP.md](ROADMAP.md),
+[SECURITY.md](SECURITY.md), [CHANGELOG.md](CHANGELOG.md), and
+[VERSIONS.md](VERSIONS.md) (per-version history and how to use each).
 
 ## Publishing
 

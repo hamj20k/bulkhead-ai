@@ -86,6 +86,32 @@ new Bulkhead({ policy: 'strict', scorer: { threshold: 0.7, checkUnicode: true } 
 > `0.7` block threshold (that needs ~3 weak hits or one strong/custom signal). Treat
 > the block threshold as a coarse safety net; for real detection, plug in a scorer.
 
+## Cross-chunk judges (0.2)
+
+The regex scorer is the zero-dep default. Add a cross-chunk **judge** that sees
+all retrieved chunks at once (so it catches payloads split across them). Ready-made
+factories for cloud and Ollama:
+
+```ts
+import { Bulkhead, ollamaJudge, cloudJudge } from 'bulkhead-ai'
+
+// local, no data leaves the machine:
+const bh = new Bulkhead({ policy: 'strict' }, undefined, ollamaJudge({ model: 'llama3.2:3b' }))
+
+// or hosted (sends suspicious content to the provider):
+const bh2 = new Bulkhead({ policy: 'strict' }, undefined,
+  cloudJudge({ provider: 'groq', apiKeyEnv: 'GROQ_API_KEY' }))
+```
+
+- `judgeWhen`: `never` / `gate_flagged` / `suspicious_or_many` (default) / `always`.
+- `judgeOnError`: `fail_open` / `fail_closed` / `auto` (follows policy). Never silent.
+- `seal()` is already async, so judge calls never block — no separate `aseal()`.
+- **Privacy:** a cloud judge sends retrieved content to the provider; Ollama keeps
+  it local. (Local in-process models live in the Python package.)
+
+See [VERSIONS.md](../../VERSIONS.md) and the root
+[Scorer tiers](../../README.md#scorer-tiers).
+
 ## Caveats
 
 - **`streamText` returns a `Promise`.** Unlike the Vercel SDK's synchronous `streamText`, the wrapped version is `async` (sealing — and any custom scorer — may be async). Use `const result = await streamText({ ... })`.

@@ -7,10 +7,13 @@ It stops external content (web pages, RAG results, tool outputs) from ever being
 ## Install
 
 ```bash
-pip install bulkhead-ai            # core, zero dependencies
-pip install bulkhead-ai[openai]    # + OpenAI wrapper
-pip install bulkhead-ai[anthropic] # + Anthropic wrapper
-pip install bulkhead-ai[all]       # everything
+pip install bulkhead-ai              # core, zero dependencies (regex scorer)
+pip install "bulkhead-ai[openai]"    # + OpenAI cloud judge / wrapper
+pip install "bulkhead-ai[anthropic]" # + Anthropic cloud judge / wrapper
+pip install "bulkhead-ai[ollama]"    # local Ollama judge (HTTP, no extra deps)
+pip install "bulkhead-ai[onnx]"      # local ONNX encoder gate
+pip install "bulkhead-ai[llama]"     # local llama-cpp GGUF judge
+pip install "bulkhead-ai[all]"       # everything
 ```
 
 ## The problem
@@ -104,6 +107,37 @@ BulkheadConfig(policy="strict", scorer=ScorerConfig(threshold=0.7, check_unicode
 > textbook match scores `0.3` — it raises a flag but does **not** cross the default
 > `0.7` block threshold. Treat the block as a coarse safety net; for real detection,
 > pass your own `scorer=` (e.g. an LLM judge).
+
+### Scorer tiers + `bulkhead setup` (0.2)
+
+The regex scorer is the zero-dep default. Opt into stronger tiers: a per-chunk
+**gate** and a cross-chunk **judge** (sees all chunks together, so it catches
+payloads split across chunks). Configure once:
+
+```bash
+pip install "bulkhead-ai[onnx,ollama]"
+bulkhead setup --recommended          # ONNX gate + Ollama judge
+```
+```python
+bh = Bulkhead.from_config()           # opt-in; plain seal() stays the regex default
+```
+
+Or pass a judge directly:
+
+```python
+from bulkhead.scorers.ollama import ollama_judge_factory
+judge = ollama_judge_factory({"model": "llama3.2:3b"}, BulkheadConfig())
+bh = Bulkhead(BulkheadConfig(policy="strict"), judge=judge)
+```
+
+- `judge_when`: `never` / `gate_flagged` / `suspicious_or_many` (default) / `always`.
+- `judge_on_error`: `fail_open` / `fail_closed` / `auto` (follows policy). Never silent.
+- **Async servers:** `await bh.aseal(...)` so judge calls don't block the loop.
+- **Privacy:** a cloud judge sends retrieved content to the provider; local
+  runtimes (ONNX / Ollama / llama-cpp) keep it on your machine.
+
+See [VERSIONS.md](../../VERSIONS.md) and the root
+[Scorer tiers](../../README.md#scorer-tiers).
 
 ### Wrappers
 

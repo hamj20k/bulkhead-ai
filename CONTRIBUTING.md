@@ -8,10 +8,14 @@ use.
 
 - Add wrappers for popular SDKs without flattening trusted and untrusted content
   into one string.
-- Improve the local injection-risk scorer while documenting false positives and
-  false negatives.
-- Add smoke-test samples for common RAG, browser, tool, and support-ticket
-  workflows.
+- Improve the zero-dep regex scorer while documenting false positives and
+  negatives (it now flags injection phrasing, bidi/tag unicode, field-spoofing,
+  action density, and encoded blobs — add more high-precision signals).
+- Add or improve a judge/gate backend (see `packages/python/bulkhead/scorers/`):
+  a new provider, a better default judge prompt, or JS parity for a local gate.
+- Tune the few-shot `JUDGE_PROMPT` for small local models.
+- Add smoke-test / benchmark samples for common RAG, browser, tool, and
+  support-ticket workflows (incl. cross-chunk split payloads).
 - Improve docs, examples, and package ergonomics.
 
 ## Local setup

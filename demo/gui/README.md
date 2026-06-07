@@ -8,6 +8,12 @@ Zero frontend framework. The server is Python stdlib. Model calls happen
 **server-side**, so your API key never reaches the browser. It uses the real
 local `bulkhead` package to build the sealed request.
 
+The right/protected side uses the current config from the **Setup & test
+terminal**. If you have not saved a config, it uses the lightest default:
+Bulkhead's local regex scorer (model-free, zero setup). Configure a gate or
+judge model on `/setup` for heavier-duty detection, then run the single demo or
+Smoke Test with those exact settings.
+
 ## Providers
 
 The backend is chosen by the model id:
@@ -31,17 +37,44 @@ Keys are read from `.env` (repo root or this folder) or the environment — `.en
 is gitignored. You only need the key for the provider you pick; if it's missing,
 the UI shows a clear error instead of crashing.
 
+## Setup & test terminal (`/setup`)
+
+Open **http://127.0.0.1:8000/setup** for a guided, terminal-style page to set up
+and test the 0.2 tiered scorer end to end, all from the browser (server-side on
+localhost):
+
+- **Environment** panel — shows OS, which extras/SDKs are installed, whether
+  Ollama is installed/running, which API keys are set, and the current config.
+- **Install backends** — buttons that stream live output: install Ollama (uses
+  winget / brew / curl per OS), `ollama pull <model>`, and `pip install` an extra
+  (`onnx` / `llama` / `transformers` / provider SDKs).
+- **API keys** — save a provider key into `.env` (gitignored) under the chosen
+  env var; it's loaded into the running server immediately.
+- **Configure** — pick the gate runtime + model, judge runtime + model/provider,
+  `judge_when`, and policy; writes the Bulkhead config file.
+- **Test** — paste an instruction plus retrieved chunks (one per line, so you can
+  split an attack across lines to exercise the cross-chunk judge) and see the
+  risk score, flags, whether it was blocked, and the sealed JSON payload.
+
+It uses the real local package (`packages/python`) and the same `seal()` /
+config / scorer code paths the library ships.
+
 ## What you'll see
 
 - **Left (Without Bulkhead):** instruction + content concatenated into one user
   message. With an attack sample, the injection often lands — watch for the
   `injection risk` badge.
-- **Right (With Bulkhead):** JSON input with `trusted_instruction` and
-  `untrusted_inputs`, plus a guard in `system`. Expand **"view messages sent"**
-  to see the structure.
+- **Right (With Bulkhead):** the current saved setup config scores first. If it
+  blocks, no protected prompt is sent to the base model; otherwise the model gets
+  JSON input with `trusted_instruction` and `untrusted_inputs`, plus a guard in
+  `system`.
 - **Smoke Test:** select one or more relevant chat models and run every sample.
-  The dashboard shows progress, errors, verdicts, full prompt messages, and both
-  model outputs for each model/sample pair. Verdicts ignore text inside
+  The dashboard uses the current setup config for every protected run and shows
+  progress, errors, verdicts, full prompt messages, and model outputs for each
+  model/sample pair. If Bulkhead flags or blocks the protected side, the
+  protected model output is hidden and the score/risk level is shown instead.
+  Verdicts are keyword-marker checks, so they are illustrative and can be
+  inaccurate. They ignore text inside
   `<think>...</think>` blocks and explicit reasoning/rationale sections, but the
   raw output remains visible as separate output vs. thinking/reasoning sections.
   Badges score only the output section. You can print the results or save a text

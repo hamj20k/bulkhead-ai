@@ -4,6 +4,15 @@ export type PolicyMode = 'strict' | 'warn' | 'permissive'
 
 export type Confidence = 'low' | 'medium' | 'high'
 
+/** When the heavier cross-chunk judge runs. */
+export type JudgeWhen = 'never' | 'gate_flagged' | 'suspicious_or_many' | 'always'
+
+/**
+ * What to do when the judge backend errors/times out. `auto` follows policy
+ * (strict → fail_closed, warn/permissive → fail_open). Never silent either way.
+ */
+export type JudgeOnError = 'auto' | 'fail_open' | 'fail_closed'
+
 export interface ScorerConfig {
   /** Block/warn threshold. Default: 0.7 */
   threshold?: number
@@ -15,6 +24,14 @@ export interface BulkheadConfig {
   /** Default: 'warn' */
   policy?: PolicyMode
   scorer?: ScorerConfig
+  /** When the cross-chunk judge runs. Default: 'suspicious_or_many'. */
+  judgeWhen?: JudgeWhen
+  /** Chunk count at/above which the judge escalates. Default: 8. */
+  judgeMinChunks?: number
+  /** Judge backend failure behavior. Default: 'auto'. */
+  judgeOnError?: JudgeOnError
+  /** Judge backend timeout (ms). Default: 10000. */
+  judgeTimeout?: number
 }
 
 export interface RiskResult {
@@ -30,6 +47,13 @@ export interface RiskResult {
  * async — `seal()` awaits it.
  */
 export type Scorer = (content: string) => RiskResult | Promise<RiskResult>
+
+/**
+ * A judge maps the WHOLE list of retrieved chunks to a single {@link RiskResult},
+ * so it can catch payloads split across chunks. Run per `config.judgeWhen`. May
+ * be sync or async — `seal()` awaits it.
+ */
+export type JudgeScorer = (chunks: string[]) => RiskResult | Promise<RiskResult>
 
 export interface SealInput {
   user: string

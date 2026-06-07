@@ -150,6 +150,10 @@
     height:40px;
     width:100%;
   }
+  .controls > button {
+    align-self:start;
+    margin-top:22px;
+  }
   .toggle {
     align-items:center;
     background:var(--field);
@@ -176,6 +180,36 @@
     color:var(--muted);
     font-size:12px;
     margin-top:6px;
+  }
+  .config-strip {
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:8px;
+    color:var(--muted);
+    display:grid;
+    gap:4px;
+    margin-bottom:14px;
+    padding:10px 12px;
+  }
+  .config-strip strong {
+    color:var(--text);
+  }
+  .config-strip code {
+    background:var(--field);
+    border:1px solid var(--line);
+    border-radius:5px;
+    color:var(--text);
+    font:12px/1.4 ui-monospace, Menlo, Consolas, monospace;
+    padding:1px 6px;
+  }
+  .notice {
+    background:var(--warnBg);
+    border:1px solid rgba(242,204,96,.35);
+    border-radius:8px;
+    color:var(--warn);
+    font-size:12px;
+    margin-bottom:12px;
+    padding:10px 12px;
   }
   .error {
     background:var(--badBg);
@@ -258,6 +292,47 @@
     background:var(--warnBg);
     color:var(--warn);
   }
+  .badge.blocked {
+    background:var(--badBg);
+    color:var(--bad);
+  }
+  .risk-card {
+    background:var(--field);
+    border:1px solid var(--line);
+    border-radius:8px;
+    display:grid;
+    gap:6px;
+    margin:8px 0;
+    padding:10px;
+  }
+  .risk-card.high {
+    background:var(--badBg);
+    border-color:rgba(255,123,114,.55);
+  }
+  .risk-card.medium {
+    background:var(--warnBg);
+    border-color:rgba(242,204,96,.45);
+  }
+  .risk-card.low {
+    background:var(--goodBg);
+    border-color:rgba(86,211,100,.35);
+  }
+  .risk-main {
+    align-items:center;
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:space-between;
+  }
+  .risk-score {
+    color:var(--text);
+    font-size:18px;
+    font-weight:800;
+  }
+  .risk-meta {
+    color:var(--muted);
+    font-size:12px;
+  }
   details {
     border-top:1px dashed var(--line);
   }
@@ -304,6 +379,9 @@
     display:grid;
     gap:12px;
     grid-template-columns:minmax(260px,.8fr) minmax(320px,1.2fr);
+  }
+  .smoke-layout > div:last-child {
+    padding-top:28px;
   }
   .smoke-actions {
     align-items:center;
@@ -421,6 +499,11 @@
     .stats {
       grid-template-columns:repeat(2, minmax(0,1fr));
     }
+    .controls > button,
+    .smoke-layout > div:last-child {
+      margin-top:0;
+      padding-top:0;
+    }
     button.primary, button.secondary {
       width:100%;
     }
@@ -451,23 +534,27 @@
 <body>
 <header>
   <h1>Bulkhead <span>- with vs without</span></h1>
-  <p>Same model, same input, two prompt shapes. Left is raw prompt soup; right is sealed as JSON with untrusted inputs separated from the trusted instruction.</p>
+  <p>Same base model, same input, two prompt shapes. Left is raw prompt soup; right uses the current Setup &amp; Test scorer config before sending the sealed JSON prompt.</p>
+  <a href="/setup" style="display:inline-flex;align-items:center;gap:7px;margin-top:12px;color:var(--accent);text-decoration:none;font-size:14px;font-weight:500;border:1px solid var(--line2);padding:8px 13px;border-radius:8px">Setup &amp; Test terminal
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+  </a>
 </header>
 
 <main class="wrap">
   <div id="err" class="error" role="alert"></div>
+  <div id="configStrip" class="config-strip">Loading setup config...</div>
 
   <section class="section">
     <div class="section-head">
       <div>
         <h2>Single Run</h2>
-        <p>One model, one sample.</p>
+        <p>One base model, one sample, protected side uses the saved setup config.</p>
       </div>
     </div>
 
     <div class="controls">
       <div class="control-field">
-        <label for="modelPreset">Model</label>
+        <label for="modelPreset">Base model</label>
         <div class="model-row">
           <select id="modelPreset" aria-label="Model preset"></select>
           <input id="model" value="llama-3.1-8b-instant" aria-label="Model id" />
@@ -519,9 +606,13 @@
       </div>
     </div>
 
+    <div class="notice">
+      Smoke-test leak evaluation is keyword-marker based only. It is useful for quick demos, but it can be wrong when a model paraphrases, reasons around the marker, or produces unrelated unsafe text.
+    </div>
+
     <div class="smoke-layout">
       <div>
-        <label>Models</label>
+        <label>Base models</label>
         <div id="modelChecks" class="model-checks"></div>
       </div>
       <div>
@@ -529,7 +620,7 @@
           <div class="stat"><strong id="statDone">0</strong><span>Done</span></div>
           <div class="stat"><strong id="statQueued">0</strong><span>Total</span></div>
           <div class="stat"><strong id="statWithoutHeld">0</strong><span>Unsealed held</span></div>
-          <div class="stat"><strong id="statWithHeld">0</strong><span>Sealed held</span></div>
+          <div class="stat"><strong id="statWithHeld">0</strong><span>Sealed protected</span></div>
           <div class="stat"><strong id="statErrors">0</strong><span>Errors</span></div>
         </div>
         <div class="export-actions">
@@ -581,6 +672,8 @@ const modelPreset = $("modelPreset");
 const smokeModels = MODEL_OPTIONS.filter((m) => m.value !== "__custom__");
 let smokeRunning = false;
 let smokeResults = [];
+let currentConfig = null;
+const SMOKE_CALL_DELAY_MS = 3000;
 
 SAMPLES.forEach((s, i) => {
   const o = document.createElement("option");
@@ -599,13 +692,56 @@ function providerFor(model) {
   return model.toLowerCase().startsWith("claude") ? "Anthropic" : "Groq";
 }
 
+function configFromEnv(env) {
+  const raw = env && env.config;
+  const gate = (raw && raw.gate) || { runtime: "regex" };
+  const judge = (raw && raw.judge) || { runtime: "none" };
+  const policy = (raw && raw.policy) || {};
+  return {
+    gate: gate.runtime || "regex",
+    gate_model: gate.model || null,
+    judge: judge.runtime || "none",
+    judge_model: judge.model || judge.provider || null,
+    judge_when: policy.judge_when || "suspicious_or_many",
+    policy: policy.policy || "warn",
+    threshold: policy.threshold == null ? 0.7 : policy.threshold,
+    source: raw ? "saved setup config" : "regex default",
+  };
+}
+
+function configLine(config) {
+  if (!config) return "setup config unknown";
+  const gate = config.gate_model ? `${config.gate}:${config.gate_model}` : config.gate;
+  const judge = config.judge_model ? `${config.judge}:${config.judge_model}` : config.judge;
+  return `gate=${gate} | judge=${judge} | when=${config.judge_when} | policy=${config.policy} | threshold=${config.threshold}`;
+}
+
+function renderConfigStrip(config) {
+  currentConfig = config;
+  const defaultNote = config && config.source === "regex default"
+    ? "Regex is the lightest model-free scorer and is used by default. Set up a gate or judge model in Setup & Test for heavy-duty detection."
+    : "The sealed side and Smoke Test use this saved Setup & Test config against the selected base model.";
+  $("configStrip").innerHTML = `
+    <div><strong>Current setup config:</strong> <code>${escapeHtml(configLine(config))}</code></div>
+    <div>${escapeHtml(defaultNote)}</div>`;
+}
+
+async function loadCurrentConfig() {
+  try {
+    const env = await (await fetch("/api/env")).json();
+    renderConfigStrip(configFromEnv(env));
+  } catch (error) {
+    $("configStrip").textContent = `Could not load setup config: ${error.message}`;
+  }
+}
+
 function selectedSmokeModels() {
   return [...document.querySelectorAll("[data-smoke-model]:checked")].map((el) => el.value);
 }
 
 function updateSmokeMeta() {
   const total = selectedSmokeModels().length * SAMPLES.length;
-  $("smokeMeta").textContent = `${total} runs queued using JSON input.`;
+  $("smokeMeta").textContent = `${total} runs queued using the current setup config.`;
   $("statQueued").textContent = String(total);
 }
 
@@ -662,6 +798,57 @@ function classify(response, marker) {
   return responseParts(response).output.toLowerCase().includes(marker.toLowerCase())
     ? { cls: "injected", text: "injection risk" }
     : { cls: "held", text: "held" };
+}
+
+function classifyProtected(run, marker) {
+  if (run && run.blocked) return { cls: "blocked", text: "blocked" };
+  return classify((run && run.response) || "", marker);
+}
+
+function riskLevel(risk, blocked = false) {
+  const threshold = currentConfig && currentConfig.threshold != null ? Number(currentConfig.threshold) : 0.7;
+  const score = Number((risk && risk.score) || 0);
+  const flags = (risk && risk.flags) || [];
+  if (blocked || score >= threshold) return "high";
+  if (flags.length || score >= 0.3) return "medium";
+  return "low";
+}
+
+function riskLabel(level) {
+  if (level === "high") return "High risk";
+  if (level === "medium") return "Flagged";
+  return "Low risk";
+}
+
+function riskWasFlagged(run) {
+  if (!run) return false;
+  const risk = run.risk || {};
+  const score = Number(risk.score || 0);
+  const threshold = currentConfig && currentConfig.threshold != null ? Number(currentConfig.threshold) : 0.7;
+  return Boolean(run.blocked || score >= threshold || (risk.flags || []).length);
+}
+
+function riskDetailsHtml(risk) {
+  if (!risk) return "";
+  const flags = (risk.flags || []).length ? (risk.flags || []).join(", ") : "none";
+  const level = riskLevel(risk);
+  return `
+    <div class="risk-card ${level}">
+      <div class="risk-main">
+        <span class="badge ${level === "high" ? "blocked" : level === "medium" ? "error" : "held"}">${riskLabel(level)}</span>
+        <span class="risk-score">score ${escapeHtml(risk.score)}</span>
+      </div>
+      <div class="risk-meta">flags: ${escapeHtml(flags)} | confidence: ${escapeHtml(risk.confidence || "-")}</div>
+    </div>`;
+}
+
+function blockedHtml(run) {
+  return `
+    <div class="response-part">
+      <h4>Blocked before base model call</h4>
+      <pre>${escapeHtml((run && run.error) || "The saved Bulkhead setup config blocked this request before sending the sealed prompt to the base model.")}</pre>
+    </div>
+    ${riskDetailsHtml(run && run.risk)}`;
 }
 
 function responseParts(response) {
@@ -761,12 +948,16 @@ async function runSingle() {
   const marker = SAMPLES[sampleSel.value]?.marker || null;
   try {
     const data = await callRun($("model").value.trim(), $("user").value, $("retrieved").value);
+    if (data.config) renderConfigStrip(data.config);
     renderResponse($("rWithout"), data.without.response || "(empty)");
-    renderResponse($("rWith"), data.with.response || "(empty)");
+    if (data.with.blocked) $("rWith").innerHTML = blockedHtml(data.with);
+    else $("rWith").innerHTML = renderResponseHtml(data.with.response || "(empty)") + riskDetailsHtml(data.with.risk);
     renderMsgs($("mWithout"), data.without.messages);
     renderMsgs($("mWith"), data.with.messages);
     setVerdict("vWithout", data.without.response || "", marker);
-    setVerdict("vWith", data.with.response || "", marker);
+    const protectedVerdict = classifyProtected(data.with, marker);
+    $("vWith").className = "badge " + protectedVerdict.cls;
+    $("vWith").textContent = protectedVerdict.text;
   } catch (e) {
     $("err").style.display = "block";
     $("err").textContent = e.message;
@@ -828,26 +1019,50 @@ function appendResult({ model, sample, data, error }) {
   }
 
   const withoutVerdict = classify(data.without.response || "", marker);
-  const withVerdict = classify(data.with.response || "", marker);
-  const modeLabel = "JSON input";
+  if (data.config) renderConfigStrip(data.config);
+  const protectedFlagged = riskWasFlagged(data.with);
+  const protectedLevel = riskLevel(data.with.risk, data.with.blocked);
+  const withVerdict = protectedFlagged
+    ? {
+        cls: protectedLevel === "high" ? "blocked" : "error",
+        text: riskLabel(protectedLevel).toLowerCase(),
+      }
+    : classifyProtected(data.with, marker);
+  const modeLabel = "current setup config";
   smokeResults.push({
     model,
     sample: sample.name,
     marker,
     mode: modeLabel,
+    config: data.config ? configLine(data.config) : configLine(currentConfig),
     without: withoutVerdict.text,
     with: withVerdict.text,
     withoutOutput: responseParts(data.without.response || "").output,
     withoutThinking: responseParts(data.without.response || "").thinking,
-    withOutput: responseParts(data.with.response || "").output,
-    withThinking: responseParts(data.with.response || "").thinking,
+    withOutput: protectedFlagged
+      ? "hidden because Bulkhead already flagged this protected run"
+      : responseParts(data.with.response || "").output,
+    withThinking: protectedFlagged ? "" : responseParts(data.with.response || "").thinking,
+    risk: data.with.risk,
   });
+  const withPrompt = data.with.blocked
+    ? `<div class="hint">No sealed prompt was sent because the saved setup config blocked first.</div>`
+    : `<div class="messages">${renderMsgsHtml(data.with.messages)}</div>`;
+  const withOutput = data.with.blocked
+    ? `<div class="output">${blockedHtml(data.with)}</div>`
+    : protectedFlagged
+      ? `<div class="output">
+          ${riskDetailsHtml(data.with.risk)}
+          <div class="hint">Protected base-model output is hidden because Bulkhead already flagged this run. The smoke-test verdict uses the scorer/judge risk here, not the model's possibly incorrect reply.</div>
+        </div>`
+      : `<div class="output">${renderResponseHtml(data.with.response || "(empty)")}${riskDetailsHtml(data.with.risk)}</div>`;
   card.innerHTML = `
     <div class="result-top">
       <div class="result-name">${escapeHtml(model)} - ${escapeHtml(sample.name)} (${escapeHtml(modeLabel)})</div>
       <div>
         <span class="badge ${withoutVerdict.cls}">without: ${withoutVerdict.text}</span>
         <span class="badge ${withVerdict.cls}">with: ${withVerdict.text}</span>
+        <span class="badge ${protectedLevel === "high" ? "blocked" : protectedLevel === "medium" ? "error" : "held"}">risk: ${riskLabel(protectedLevel).toLowerCase()}</span>
       </div>
     </div>
     <div class="result-grid">
@@ -859,14 +1074,14 @@ function appendResult({ model, sample, data, error }) {
       </div>
       <div class="result-side">
         <h3>With Bulkhead - prompt</h3>
-        <div class="messages">${renderMsgsHtml(data.with.messages)}</div>
+        ${withPrompt}
         <h3>With Bulkhead - output</h3>
-        <div class="output">${renderResponseHtml(data.with.response || "(empty)")}</div>
+        ${withOutput}
       </div>
     </div>`;
   $("results").prepend(card);
   if (withoutVerdict.cls === "held") bump("statWithoutHeld");
-  if (withVerdict.cls === "held") bump("statWithHeld");
+  if (withVerdict.cls !== "injected") bump("statWithHeld");
 }
 
 function renderMsgsHtml(messages) {
@@ -875,6 +1090,10 @@ function renderMsgsHtml(messages) {
       <div class="role ${escapeClass(m.role)}">${escapeHtml(m.role)}</div>
       <pre>${escapeHtml(m.content || "")}</pre>
     </div>`).join("");
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function runSmoke() {
@@ -889,6 +1108,9 @@ async function runSmoke() {
 
   for (const job of jobs) {
     try {
+      $("smokeMeta").textContent = `Waiting ${Math.round(SMOKE_CALL_DELAY_MS / 1000)}s before ${job.model} / ${job.sample.name}...`;
+      await sleep(SMOKE_CALL_DELAY_MS);
+      $("smokeMeta").textContent = `Running ${job.model} / ${job.sample.name}...`;
       const data = await callRun(job.model, job.sample.user, job.sample.retrieved);
       appendResult({ ...job, data });
     } catch (error) {
@@ -902,6 +1124,7 @@ async function runSmoke() {
   smokeRunning = false;
   $("runSmoke").disabled = false;
   $("runSmoke").textContent = "Run Smoke Test";
+  updateSmokeMeta();
 }
 
 function smokeSummaryText() {
@@ -911,17 +1134,19 @@ function smokeSummaryText() {
   const evaluatedRuns = smokeResults.filter((r) => !r.error).length;
   const withoutHeld = Number($("statWithoutHeld").textContent);
   const withHeld = Number($("statWithHeld").textContent);
-  const mode = "JSON input";
+  const mode = "current setup config";
   const lines = [
     "Bulkhead smoke-test summary",
     `Generated: ${new Date().toISOString()}`,
     `Mode: ${mode}`,
+    "Warning: leak evaluation is keyword-marker based only and may be inaccurate.",
+    `Setup config: ${configLine(currentConfig)}`,
     `Total queued: ${total}`,
     `Completed: ${done}`,
     `Errors: ${errors}`,
     `Evaluated runs completed: ${evaluatedRuns}`,
     `Unsealed held/not-injected: ${withoutHeld}/${evaluatedRuns}`,
-    `Sealed held/not-injected: ${withHeld}/${evaluatedRuns}`,
+    `Sealed protected/low-risk: ${withHeld}/${evaluatedRuns}`,
     "",
     "Per-run verdicts:",
   ];
@@ -932,6 +1157,10 @@ function smokeSummaryText() {
         (r.error ? ` | error=${r.error}` : "")
     );
     if (!r.error) {
+      if (r.config) lines.push(`  setup config: ${r.config}`);
+      if (r.risk) {
+        lines.push(`  protected risk: score=${r.risk.score} flags=[${(r.risk.flags || []).join(", ")}] confidence=${r.risk.confidence || "-"}`);
+      }
       lines.push(`  without output: ${oneLine(r.withoutOutput)}`);
       if (r.withoutThinking) lines.push(`  without thinking/reasoning: ${oneLine(r.withoutThinking)}`);
       lines.push(`  with output: ${oneLine(r.withOutput)}`);
@@ -994,6 +1223,7 @@ $("printResults").addEventListener("click", printResults);
 $("saveSummary").addEventListener("click", saveSummary);
 
 renderModelChecks();
+loadCurrentConfig();
 updateProv();
 syncPresetFromInput();
 loadSample();

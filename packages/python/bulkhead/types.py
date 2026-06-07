@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Literal
+from typing import Any, Awaitable, Callable, Literal, Union
 
 PolicyMode = Literal["strict", "warn", "permissive"]
 Confidence = Literal["low", "medium", "high"]
+
+# When the heavier cross-chunk judge runs. See README "scorer tiers".
+JudgeWhen = Literal["never", "gate_flagged", "suspicious_or_many", "always"]
+
+# What to do when the judge backend errors/times out. "auto" follows policy
+# (strict -> fail_closed, warn/permissive -> fail_open). Never silent either way.
+JudgeOnError = Literal["auto", "fail_open", "fail_closed"]
 
 
 @dataclass
@@ -17,6 +24,11 @@ class ScorerConfig:
 class BulkheadConfig:
     policy: PolicyMode = "warn"
     scorer: ScorerConfig = field(default_factory=ScorerConfig)
+    # Cross-chunk judge controls (only matter when a judge is supplied).
+    judge_when: JudgeWhen = "suspicious_or_many"
+    judge_min_chunks: int = 8
+    judge_on_error: JudgeOnError = "auto"
+    judge_timeout: float = 10.0
 
 
 @dataclass
@@ -27,9 +39,16 @@ class RiskResult:
     raw_matches: list[str]
 
 
-# A scorer is any callable that maps content to a RiskResult. Swap the built-in
-# regex scorer for your own (e.g. an LLM judge or hosted detector).
+# A (gate) scorer maps one chunk of content to a RiskResult. A judge maps the
+# WHOLE list of retrieved chunks to a single RiskResult (so it can catch payloads
+# split across chunks). Both may be sync or async; the async forms are used by
+# aseal(). Swap the built-in regex scorer for your own (e.g. an LLM judge).
 Scorer = Callable[[str], RiskResult]
+AsyncScorer = Callable[[str], Awaitable[RiskResult]]
+JudgeScorer = Callable[[list[str]], RiskResult]
+AsyncJudgeScorer = Callable[[list[str]], Awaitable[RiskResult]]
+AnyScorer = Union[Scorer, AsyncScorer]
+AnyJudge = Union[JudgeScorer, AsyncJudgeScorer]
 
 
 @dataclass

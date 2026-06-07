@@ -47,15 +47,30 @@ the old metric mis-counted as attacks).
 
 ### About the scorer / `sealed_strict`
 
-The built-in regex scorer is a **coarse pre-filter, not a detector**: on this
-payload set it scores most injections `0.0` and the rest `0.3` — **none reach the
-default `0.7` block threshold**, so at `--threshold 0.7` `sealed_strict` blocks
-nothing and equals `sealed_user`. Run `--threshold 0.3` to make the gate fire
-(~a third of payloads), or plug in a real scorer. The point this makes is honest:
-**structural separation does the heavy lifting; the scorer is a weak bonus.**
+The built-in regex scorer is a **coarse pre-filter, not a detector**. As of 0.2
+it is considerably stronger (more injection/jailbreak/extraction patterns, plus
+bidi-control, unicode-tag, JSON field-spoof, action-density and encoded-blob
+flags — see [VERSIONS.md](../VERSIONS.md)), so on this payload set more entries
+now reach the default `0.7` block threshold than before. Still, the honest point
+holds: **structural separation does the heavy lifting; the regex is a bonus.**
+Run `--threshold 0.3` to make the gate fire more aggressively, or move up a tier.
 
-Swap the backend (any OpenAI-compatible endpoint) by editing `make_completer` in
-[`asr.py`](asr.py).
+### Benchmarking the cross-chunk judge (0.2)
+
+The `sealed_strict` mode uses the local regex gate. To measure the **cross-chunk
+judge** (a model that sees all chunks together), pass `--judge` to add a
+`sealed_judge` mode that seals with `policy="strict"`, `judge_when="always"`:
+
+```bash
+ollama pull llama3.2:3b
+python benchmark/asr.py --judge ollama:llama3.2:3b
+# or a hosted judge (needs the provider key in the env):
+python benchmark/asr.py --judge cloud:groq
+```
+
+This is the most representative number for the full tiered system, at the cost of
+an extra model call per payload. Swap the main backend (any OpenAI-compatible
+endpoint) by editing `make_completer` in [`asr.py`](asr.py).
 
 ## Caveats (read these)
 

@@ -1,6 +1,6 @@
 {
   "name": "bulkhead-ai",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Tiny library for separating trusted prompts from untrusted RAG/tool content",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -15,8 +15,14 @@
       "types": "./dist/vercel-ai.d.ts",
       "import": "./dist/vercel-ai.mjs",
       "require": "./dist/vercel-ai.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.mjs",
+      "require": "./dist/config.js"
     }
   },
+  "bin": { "bulkhead": "dist/bin.js" },
   "files": ["dist", "README.md", "LICENSE"],
   "scripts": {
     "build": "tsup",
